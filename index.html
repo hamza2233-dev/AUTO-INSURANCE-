@@ -159,9 +159,22 @@
                     const jsonRes = JSON.parse(resultText);
                     let rawNum = jsonRes.phoneNumberNoPlus || jsonRes.phoneNumber;
 
-                    // Flexible property lookups
-                    let expireVal = jsonRes.EXPIREINSECONDS || jsonRes.expireinseconds || jsonRes.expire_in_seconds;
-                    let durationVal = jsonRes.callminDuration || jsonRes.call_min_duration || jsonRes.min_duration || jsonRes.duration;
+                    // Search keys dynamically/case-insensitively for expire and duration fields
+                    let expireVal = null;
+                    let durationVal = null;
+
+                    for (const key of Object.keys(jsonRes)) {
+                        const lowerKey = key.toLowerCase();
+                        const val = jsonRes[key];
+                        if (val !== null && val !== undefined && val !== '') {
+                            if (lowerKey.includes('expire') || lowerKey.includes('expires')) {
+                                expireVal = val;
+                            }
+                            if (lowerKey.includes('duration') || lowerKey.includes('minduration') || lowerKey.includes('callmin')) {
+                                durationVal = val;
+                            }
+                        }
+                    }
 
                     if (rawNum) {
                         let cleanNum = rawNum.replace(/^\+/, '');
@@ -172,16 +185,16 @@
                         lastExtractedDid = cleanNum;
                         didText.textContent = lastExtractedDid;
 
-                        // Handle Expire In Seconds display
-                        if (expireVal !== undefined && expireVal !== null && expireVal !== '') {
+                        // Display Expire if found
+                        if (expireVal !== null) {
                             expireText.textContent = expireVal;
                             expireContainer.classList.remove('hidden');
                         } else {
                             expireContainer.classList.add('hidden');
                         }
 
-                        // Handle Call Min Duration display
-                        if (durationVal !== undefined && durationVal !== null && durationVal !== '') {
+                        // Display Duration if found
+                        if (durationVal !== null) {
                             durationText.textContent = durationVal;
                             durationContainer.classList.remove('hidden');
                         } else {
@@ -195,7 +208,7 @@
                         speakSuccess();
                     } else {
                         didContainer.classList.add('hidden');
-                        noMatchMsg.classList.remove('hidden');
+                        noMatchMsg.classList.add('hidden');
                     }
                 } catch (e) {
                     didContainer.classList.add('hidden');
