@@ -52,26 +52,28 @@
             </div>
         </form>
 
-        <!-- Response Console -->
+        <!-- Response Console (Clean Minimal View) -->
         <div id="responseBox" class="hidden mx-6 mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-slate-200 text-slate-400 font-mono">
-                <span>Response Log</span>
-                <span id="responseTimestamp">--:--:--</span>
+                <span>Response Details</span>
+                <span id="responseDuration">-- ms</span>
             </div>
             
             <!-- DID Display & Copy Action -->
-            <div id="didContainer" class="hidden flex items-center justify-between bg-emerald-50 border border-emerald-100 p-2.5 rounded-lg">
+            <div id="didContainer" class="hidden flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-lg">
                 <div class="font-mono text-emerald-900 font-medium">
-                    <span class="text-slate-500 text-[10px] block uppercase">Target Phone Number</span>
-                    <span id="didText" class="text-sm">--</span>
+                    <span class="text-slate-500 text-[10px] block uppercase">Target Phone Number (DID)</span>
+                    <span id="didText" class="text-base font-bold">--</span>
                 </div>
-                <button type="button" id="copyDidBtn" onclick="copyDid()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-md transition flex items-center space-x-1.5 shadow-sm">
+                <button type="button" id="copyDidBtn" onclick="copyDid()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-md transition flex items-center space-x-1.5 shadow-sm font-medium">
                     <i class="fa-regular fa-copy"></i>
                     <span id="copyBtnText">Copy Number</span>
                 </button>
             </div>
 
-            <div id="responseContent" class="overflow-x-auto whitespace-pre-wrap break-all font-mono text-slate-600"></div>
+            <div id="noMatchMsg" class="hidden text-center text-slate-500 font-medium py-2">
+                No available agent/DID matched for this CID.
+            </div>
         </div>
     </div>
 
@@ -81,11 +83,11 @@
         const btnText = document.getElementById('btnText');
         const statusText = document.getElementById('status-text');
         const responseBox = document.getElementById('responseBox');
-        const responseContent = document.getElementById('responseContent');
-        const responseTimestamp = document.getElementById('responseTimestamp');
+        const responseDuration = document.getElementById('responseDuration');
         const autoIntervalSelect = document.getElementById('auto_interval');
         const didContainer = document.getElementById('didContainer');
         const didText = document.getElementById('didText');
+        const noMatchMsg = document.getElementById('noMatchMsg');
         const copyBtnText = document.getElementById('copyBtnText');
 
         let autoPingTimer = null;
@@ -120,6 +122,8 @@
             btnText.textContent = "Processing...";
             submitBtn.disabled = true;
 
+            const startTime = performance.now();
+
             try {
                 const response = await fetch('/api/ringba-ping', {
                     method: 'POST',
@@ -131,25 +135,17 @@
                     })
                 });
 
+                const endTime = performance.now();
+                const durationMs = Math.round(endTime - startTime);
+                responseDuration.textContent = durationMs + " ms";
+
                 const resultText = await response.text();
-                
                 responseBox.classList.remove('hidden');
-                responseTimestamp.textContent = new Date().toLocaleTimeString();
                 
                 try {
                     const jsonRes = JSON.parse(resultText);
-
-                    // Scrub/Hide bid and price fields from display
-                    const sensitiveKeys = ['bid', 'bidAmount', 'amount', 'price', 'payout', 'cost'];
-                    sensitiveKeys.forEach(key => {
-                        if (jsonRes.hasOwnProperty(key)) {
-                            jsonRes[key] = "[HIDDEN]";
-                        }
-                    });
-
-                    responseContent.textContent = JSON.stringify(jsonRes, null, 2);
-                    
                     let rawNum = jsonRes.phoneNumberNoPlus || jsonRes.phoneNumber;
+
                     if (rawNum) {
                         let cleanNum = rawNum.replace(/^\+/, '');
                         if (cleanNum.startsWith('1') && cleanNum.length === 11) {
@@ -159,24 +155,27 @@
                         lastExtractedDid = cleanNum;
                         didText.textContent = lastExtractedDid;
                         didContainer.classList.remove('hidden');
+                        noMatchMsg.classList.add('hidden');
                         
                         stopAutoPing();
                         speakSuccess();
                     } else {
                         didContainer.classList.add('hidden');
+                        noMatchMsg.classList.remove('hidden');
                     }
                 } catch (e) {
-                    responseContent.textContent = resultText;
                     didContainer.classList.add('hidden');
+                    noMatchMsg.classList.remove('hidden');
                 }
 
                 statusText.textContent = "Online";
                 statusText.className = "text-xs font-medium text-emerald-600";
             } catch (error) {
                 responseBox.classList.remove('hidden');
-                responseTimestamp.textContent = new Date().toLocaleTimeString();
-                responseContent.textContent = "Error: " + error.message;
+                responseDuration.textContent = "Error";
                 didContainer.classList.add('hidden');
+                noMatchMsg.classList.remove('hidden');
+                noMatchMsg.textContent = "Error: " + error.message;
                 
                 statusText.textContent = "Error";
                 statusText.className = "text-xs font-medium text-rose-600";
