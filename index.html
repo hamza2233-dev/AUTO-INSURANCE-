@@ -72,9 +72,15 @@
                     </button>
                 </div>
 
-                <!-- Call Min Duration Display Box -->
+                <!-- Expire In Seconds Box -->
+                <div id="expireContainer" class="hidden flex items-center justify-between bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg font-mono">
+                    <span class="text-amber-800 text-[10px] uppercase font-semibold">Expire In Seconds:</span>
+                    <span id="expireText" class="text-amber-900 font-bold text-sm">--</span>
+                </div>
+
+                <!-- Call Min Duration Box -->
                 <div id="durationContainer" class="hidden flex items-center justify-between bg-slate-100 border border-slate-200 px-3 py-2 rounded-lg font-mono">
-                    <span id="durationLabel" class="text-slate-500 text-[10px] uppercase">Duration:</span>
+                    <span class="text-slate-500 text-[10px] uppercase font-semibold">Call Min Duration:</span>
                     <span id="durationText" class="text-slate-800 font-bold text-sm">--</span>
                 </div>
             </div>
@@ -95,8 +101,9 @@
         const autoIntervalSelect = document.getElementById('auto_interval');
         const didContainer = document.getElementById('didContainer');
         const didText = document.getElementById('didText');
+        const expireContainer = document.getElementById('expireContainer');
+        const expireText = document.getElementById('expireText');
         const durationContainer = document.getElementById('durationContainer');
-        const durationLabel = document.getElementById('durationLabel');
         const durationText = document.getElementById('durationText');
         const noMatchMsg = document.getElementById('noMatchMsg');
         const copyBtnText = document.getElementById('copyBtnText');
@@ -152,21 +159,9 @@
                     const jsonRes = JSON.parse(resultText);
                     let rawNum = jsonRes.phoneNumberNoPlus || jsonRes.phoneNumber;
 
-                    // Dynamic search: scan all keys in the response object for anything containing duration, time, min, sec
-                    let foundDurationKey = null;
-                    let foundDurationVal = null;
-                    
-                    for (const key of Object.keys(jsonRes)) {
-                        const lowerKey = key.toLowerCase();
-                        if (lowerKey.includes('duration') || lowerKey.includes('time') || lowerKey.includes('min') || lowerKey.includes('sec')) {
-                            const val = jsonRes[key];
-                            if (val !== null && val !== undefined && val !== '') {
-                                foundDurationKey = key;
-                                foundDurationVal = val;
-                                break;
-                            }
-                        }
-                    }
+                    // Flexible property lookups
+                    let expireVal = jsonRes.EXPIREINSECONDS || jsonRes.expireinseconds || jsonRes.expire_in_seconds;
+                    let durationVal = jsonRes.callminDuration || jsonRes.call_min_duration || jsonRes.min_duration || jsonRes.duration;
 
                     if (rawNum) {
                         let cleanNum = rawNum.replace(/^\+/, '');
@@ -177,9 +172,17 @@
                         lastExtractedDid = cleanNum;
                         didText.textContent = lastExtractedDid;
 
-                        if (foundDurationVal !== null) {
-                            durationLabel.textContent = foundDurationKey.replace(/_/g, ' ').toUpperCase() + ":";
-                            durationText.textContent = foundDurationVal;
+                        // Handle Expire In Seconds display
+                        if (expireVal !== undefined && expireVal !== null && expireVal !== '') {
+                            expireText.textContent = expireVal;
+                            expireContainer.classList.remove('hidden');
+                        } else {
+                            expireContainer.classList.add('hidden');
+                        }
+
+                        // Handle Call Min Duration display
+                        if (durationVal !== undefined && durationVal !== null && durationVal !== '') {
+                            durationText.textContent = durationVal;
                             durationContainer.classList.remove('hidden');
                         } else {
                             durationContainer.classList.add('hidden');
