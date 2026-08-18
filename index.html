@@ -74,7 +74,7 @@
 
                 <!-- Call Min Duration Display Box -->
                 <div id="durationContainer" class="hidden flex items-center justify-between bg-slate-100 border border-slate-200 px-3 py-2 rounded-lg font-mono">
-                    <span class="text-slate-500 text-[10px] uppercase">Call Min Duration:</span>
+                    <span id="durationLabel" class="text-slate-500 text-[10px] uppercase">Duration:</span>
                     <span id="durationText" class="text-slate-800 font-bold text-sm">--</span>
                 </div>
             </div>
@@ -96,6 +96,7 @@
         const didContainer = document.getElementById('didContainer');
         const didText = document.getElementById('didText');
         const durationContainer = document.getElementById('durationContainer');
+        const durationLabel = document.getElementById('durationLabel');
         const durationText = document.getElementById('durationText');
         const noMatchMsg = document.getElementById('noMatchMsg');
         const copyBtnText = document.getElementById('copyBtnText');
@@ -151,8 +152,21 @@
                     const jsonRes = JSON.parse(resultText);
                     let rawNum = jsonRes.phoneNumberNoPlus || jsonRes.phoneNumber;
 
-                    // Extract duration from potential property names (call_min_duration, min_duration, duration, etc.)
-                    let callDuration = jsonRes.call_min_duration || jsonRes.min_duration || jsonRes.duration || jsonRes.callMinDuration;
+                    // Dynamic search: scan all keys in the response object for anything containing duration, time, min, sec
+                    let foundDurationKey = null;
+                    let foundDurationVal = null;
+                    
+                    for (const key of Object.keys(jsonRes)) {
+                        const lowerKey = key.toLowerCase();
+                        if (lowerKey.includes('duration') || lowerKey.includes('time') || lowerKey.includes('min') || lowerKey.includes('sec')) {
+                            const val = jsonRes[key];
+                            if (val !== null && val !== undefined && val !== '') {
+                                foundDurationKey = key;
+                                foundDurationVal = val;
+                                break;
+                            }
+                        }
+                    }
 
                     if (rawNum) {
                         let cleanNum = rawNum.replace(/^\+/, '');
@@ -163,8 +177,9 @@
                         lastExtractedDid = cleanNum;
                         didText.textContent = lastExtractedDid;
 
-                        if (callDuration !== undefined && callDuration !== null && callDuration !== '') {
-                            durationText.textContent = callDuration;
+                        if (foundDurationVal !== null) {
+                            durationLabel.textContent = foundDurationKey.replace(/_/g, ' ').toUpperCase() + ":";
+                            durationText.textContent = foundDurationVal;
                             durationContainer.classList.remove('hidden');
                         } else {
                             durationContainer.classList.add('hidden');
