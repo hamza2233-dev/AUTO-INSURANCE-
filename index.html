@@ -55,7 +55,7 @@
         <!-- Response Console -->
         <div id="responseBox" class="hidden mx-6 mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-slate-200 text-slate-400 font-mono">
-                <span>Response Details</span>
+                <span>Response Log</span>
                 <span id="responseTimestamp">--:--:--</span>
             </div>
             
@@ -63,7 +63,7 @@
             <div id="didContainer" class="hidden space-y-2">
                 <div class="flex items-center justify-between bg-emerald-50 border border-emerald-100 p-3 rounded-lg">
                     <div class="font-mono text-emerald-900 font-medium">
-                        <span class="text-slate-500 text-[10px] block uppercase">Target Phone Number (DID)</span>
+                        <span class="text-slate-500 text-[10px] block uppercase">Target Phone Number</span>
                         <span id="didText" class="text-base font-bold">--</span>
                     </div>
                     <button type="button" id="copyDidBtn" onclick="copyDid()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-md transition flex items-center space-x-1.5 shadow-sm font-medium">
@@ -159,19 +159,16 @@
                     const jsonRes = JSON.parse(resultText);
                     let rawNum = jsonRes.phoneNumberNoPlus || jsonRes.phoneNumber;
 
-                    // Search keys dynamically/case-insensitively for expire and duration fields
-                    let expireVal = null;
-                    let durationVal = null;
+                    // 1. Get expireInSeconds from root
+                    let expireVal = jsonRes.expireInSeconds ?? jsonRes.EXPIREINSECONDS;
 
-                    for (const key of Object.keys(jsonRes)) {
-                        const lowerKey = key.toLowerCase();
-                        const val = jsonRes[key];
-                        if (val !== null && val !== undefined && val !== '') {
-                            if (lowerKey.includes('expire') || lowerKey.includes('expires')) {
-                                expireVal = val;
-                            }
-                            if (lowerKey.includes('duration') || lowerKey.includes('minduration') || lowerKey.includes('callmin')) {
-                                durationVal = val;
+                    // 2. Get callMinDuration from nested bidTerms array
+                    let callMinDurationVal = null;
+                    if (Array.isArray(jsonRes.bidTerms)) {
+                        for (const term of jsonRes.bidTerms) {
+                            if (term.callMinDuration !== undefined && term.callMinDuration !== null) {
+                                callMinDurationVal = term.callMinDuration;
+                                break;
                             }
                         }
                     }
@@ -185,17 +182,17 @@
                         lastExtractedDid = cleanNum;
                         didText.textContent = lastExtractedDid;
 
-                        // Display Expire if found
-                        if (expireVal !== null) {
+                        // Display Expire In Seconds
+                        if (expireVal !== undefined && expireVal !== null && expireVal !== '') {
                             expireText.textContent = expireVal;
                             expireContainer.classList.remove('hidden');
                         } else {
                             expireContainer.classList.add('hidden');
                         }
 
-                        // Display Duration if found
-                        if (durationVal !== null) {
-                            durationText.textContent = durationVal;
+                        // Display Call Min Duration
+                        if (callMinDurationVal !== undefined && callMinDurationVal !== null && callMinDurationVal !== '') {
+                            durationText.textContent = callMinDurationVal + "s";
                             durationContainer.classList.remove('hidden');
                         } else {
                             durationContainer.classList.add('hidden');
@@ -208,7 +205,7 @@
                         speakSuccess();
                     } else {
                         didContainer.classList.add('hidden');
-                        noMatchMsg.classList.add('hidden');
+                        noMatchMsg.classList.remove('hidden');
                     }
                 } catch (e) {
                     didContainer.classList.add('hidden');
